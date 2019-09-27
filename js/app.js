@@ -1,10 +1,6 @@
-/*
-Example taken from ml5js repository:
-https://github.com/ml5js/ml5-examples/tree/master/p5js/PoseNet
-*/
-
-let w = 640;
-let h = 480;
+let w = window.innerWidth;//640;
+let h = window.innerHeight;//480;
+let downSample = 3.0;
 let video;
 let poseNet;
 let poses = [];
@@ -24,7 +20,7 @@ class Word {
     this.letters = [];
     for (var i = 0; i < content.length; i++) {
       let letter = new Letter(content.charAt(i));
-      letter.offset.set(20*i, random(-5, 5));
+      letter.offset.set(15*i, random(-5, 5));
       this.letters.push(letter);
     }
     this.pos = createVector(0,0);
@@ -37,9 +33,11 @@ class Word {
   draw() {
     push();
     // apply transforms within push and pop pairs
-    translate(this.pos.x, this.pos.y);
+    //applyMatrix(-1, 0, 0, 1, w, 0);
     scale(this.scale);
+    translate(this.pos.x * downSample, this.pos.y * downSample);
     fill(this.color);
+    applyMatrix(-1, 0, 0, 1, 0, 0);
     for (var i = 0; i < this.letters.length; i++) {
       this.letters[i].draw();
     }
@@ -52,13 +50,18 @@ class Letter {
   constructor(content) {
     this.content = content;
     this.offset = createVector(0,0);
+    this.chaotic = 1.0;
     //this.scale = 1.0;
 
   }
 
   draw() {
     push();
-    text(this.content, this.offset.x, this.offset.y);
+    let t = millis() / 1000 * this.chaotic;
+    let r = noise(t + this.offset.x);
+    translate(this.offset.x + r * this.chaotic * 5, this.offset.y);
+    scale(1.0 + r*this.chaotic);
+    text(this.content, 0, 0);
     pop();
   }
 }
@@ -70,6 +73,7 @@ function setup() {
   eye1 =  createVector(0,0);
   eye2 = createVector(0,0);
   video = createCapture(VIDEO);
+  video.size(w / downSample, h / downSample);
   
   poseNet = ml5.poseNet(video, modelLoaded);
 
@@ -83,8 +87,9 @@ function setup() {
 }
 
 function draw() {
-  //image(video, 0, 0, w, h);
   background(51);
+  applyMatrix(-1, 0, 0, 1, w, 0);
+  image(video, 0, 0, w, h);
   drawFace();
   //drawKeypoints();
   //drawSkeleton();
@@ -116,9 +121,12 @@ function gotPoses(results) {
 }
 
 function drawFace() {
-  ellipse(nose.x, nose.y, 10, 10);
-  ellipse(eye1.x, eye1.y, 10, 10);
-  ellipse(eye2.x, eye2.y, 10, 10);
+  push();
+  //applyMatrix(-1, 0, 0, 1, w, 0);
+  ellipse(nose.x * downSample, nose.y * downSample, 10, 10);
+  ellipse(eye1.x * downSample, eye1.y * downSample, 10, 10);
+  ellipse(eye2.x * downSample, eye2.y * downSample, 10, 10);
+  pop();
 }
 
 
