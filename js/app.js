@@ -30,6 +30,7 @@ let poemSentences = [['And', 'remember', 'Time', 'is', 'another', 'river'],
 let sentenceIndex = 0;
 let wordIndex = 0;
 let floatingWords = [];
+let leavingWords = [];
 let currentOffsetX = 0; // for word generation
 let currentOffsetY = 0;
 const maxFloatingWords = 10;
@@ -86,47 +87,6 @@ class Paragraph {
 
 }
 
-class Sentence {
-  constructor(content) {
-    this.content = content;
-    this.words = [];
-    this.position = createVector(0, 0);
-    this.scale = 0.1;
-    this.seed = 0;
-    this.isFloating = true;
-
-    let xCoord = 0;
-    let dx = 15;
-    for (var i = 0; i < content.length; i++) {
-      let word = new Word(content[i]);
-      word.offset.set(xCoord + Math.random()*5, Math.random()*5);
-      this.words.push(word);
-      xCoord += dx * content[i].length + 20;
-    }
-
-    // seed for randomness
-    for (var i = 0; i < content[0].length; i++) {
-      this.seed += content[0].charCodeAt(i);
-    }
-  }
-
-  draw() {
-    push();
-    translate(this.position.x * downSample, this.position.y * downSample);
-    applyMatrix(-1, 0, 0, 1, 0, 0);
-
-    let s = this.scale * (1.0 + 0.3*Math.sin(0.5*time - this.seed));
-    for (var i=0; i < this.words.length; i++) {
-      this.words[i].scale = this.scale * s;
-      this.words[i].draw();
-    }
-
-
-    pop();
-  }
-}
-
-
 class Word {
   constructor(content) {
     this.content = content;
@@ -144,6 +104,7 @@ class Word {
     this.alpha = 255;
 
     this.isFloating = true;
+    this.isLeaving = false;
     this.position = createVector(0,0);
     this.target = createVector(0,0);
     this.velocity = createVector(0,0);
