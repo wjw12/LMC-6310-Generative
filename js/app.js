@@ -6,13 +6,13 @@ let poseNet;
 let poses = [];
 let skeletons = [];
 
-const meanLifetime = 10;
-const varLifetime = 2;
-const generateInterval = 1;
+const meanLifetime = 15;
+const varLifetime = 3;
+const generateInterval = 1.3;
 const letterInterval = 15;
 const lineInterval = 50;
 const smooth = 0.08;
-const backgroundNoiseScale = 0.01;
+const noiseScale = 0.05;
 let lookingAt = 0;
 let volatility = 0;
 let smoothVolatility = 0;
@@ -22,12 +22,13 @@ let nose;
 let eye1;
 let eye2;
 let tracked = false;
-let debug = true;
+let debug = false;
 let mouseInput = false;
 
 let font = 'Trebuchet MS';
 
-let poemSentences = [['And', 'remember', 'Time', 'is', 'another', 'river'],
+let poemSentences = [['To gaze', 'at', 'a river', 'made of', 'time', 'and water'],
+        ['And', 'remember', 'Time', 'is', 'another', 'river'],
         ['To know', 'we', 'stray', 'like', 'a river'],
         ['and our', 'faces', 'vanish', 'like', 'water'],
         ['To feel', 'that', 'waking', 'is another', 'dream'],
@@ -37,7 +38,25 @@ let poemSentences = [['And', 'remember', 'Time', 'is', 'another', 'river'],
         ['To', 'see in', 'every', 'day', 'and', 'year', 'a symbol'],
         ['of all', 'the days', 'of', 'man', 'and', 'his years'],
         ['and', 'convert', 'the', 'outrage', 'of the', 'years'],
-        ['into', 'music', 'a sound', 'and a', 'symbol']
+        ['into', 'music', 'a sound', 'and a', 'symbol'],
+        ['To see', 'in', 'death', 'a dream', 'in the', 'sunset'],
+        ['a golden', 'sadness'],
+        ['such', 'is', 'poetry'],
+        ['humble', 'and', 'immortal', 'poetry'],
+        ['returning', 'like', 'dawn', 'and', 'the sunset'],
+        ['Sometimes', 'at', 'evening', 'there', 'is', 'a face'],
+        ['that', 'sees', 'us', 'from the', 'deeps', 'of', 'a mirror'],
+        ['Art', 'must', 'be', 'that sort', 'of', 'mirror'],
+        ['disclosing', 'to each', 'of us', 'his', 'face'],
+        ['They', 'say', 'Ulysses', 'wearied', 'of', 'wonders'],
+        ['wept', 'with', 'love', 'on', 'seeing', 'Ithaca'],
+        ['humble', 'and', 'green'],
+        ['Art', 'is that', 'Ithaca', 'a', 'green', 'eternity'],
+        ['not', 'wonders'],
+        ['Art is', 'endless', 'like a', 'river', 'flowing'],
+        ['passing', 'yet', 'remaining', 'a mirror', 'to', 'the', 'same'],
+        ['inconstant', 'Heraclitus', 'who is', 'the same'],
+        ['and', 'yet', 'another', 'like', 'the river', 'flowing']
     ]
 let sentenceIndex = 0;
 let wordIndex = 0;
@@ -52,7 +71,7 @@ let paragraph;
 
 class Paragraph {
   constructor() {
-    this.nRows = 3;
+    this.nRows = 4;
     this.currentLine = 0;
     this.position = createVector(0, 0);
 
@@ -155,7 +174,7 @@ class Word {
 
       if (this.isLeaving) { // flying away
         if (this.scale < 15) {
-          this.scale += 0.7*dt;
+          this.scale += 0.5*dt;
           this.alpha = Math.max(0, this.alpha - 30*dt);
         }
   
@@ -163,7 +182,7 @@ class Word {
         let v = Math.min(0.5 * dist, 50);
         dir.mult(v);
         let force = createVector(Math.random(-0.3, 0.3), 10*random()); //p5.Vector.sub(this.target, this.position).normalize();
-        v = -Math.min(3, 500.0 / (dist + 3)); // repulsive
+        v = -Math.min(2, 300.0 / (dist + 3)); // repulsive
         force.mult(v);
         
         force.add(dir);
@@ -179,7 +198,8 @@ class Word {
         }
   
         if (tracked) {
-          let v = Math.min(0.5 * dist, 100);
+          // attraction
+          let v = Math.min(0.5 * dist, 150);
           let dir = p5.Vector.sub(this.target, this.position).normalize();
           dir.mult(v);
           this.velocity.set(dir.x, dir.y);
@@ -198,9 +218,26 @@ class Word {
 
       if (tracked) {
         let dir = p5.Vector.sub(this.target, this.position).normalize();
-        dir.mult(Math.min(10*dist, 300));
+        dir.mult(Math.min(15*dist, 500));
         dir.add(p5.Vector.mult(this.velocity, -3));
         dir.mult(dt);
+
+        // noise field
+        let dr = 1;
+        let noise0 = noise(this.position.x * noiseScale, this.position.y * noiseScale);
+        let fx = (noise(this.position.x * noiseScale + dr, this.position.y * noiseScale) - noise0) / dr;
+        let fy = (noise(this.position.x * noiseScale, this.position.y * noiseScale + dr) - noise0) / dr;
+        let force = createVector(fx, fy);
+        force.mult(500*smoothVolatility * dt);
+        dir.add(force);
+
+        // repulsive if volatility is high
+        let force2 = p5.Vector.sub(this.position, this.target).normalize();
+        force2.mult(Math.min(smoothVolatility * smoothVolatility * (10 / (dist+1)), 50));
+        force2.mult(dt);
+        dir.add(force2);
+
+
         this.velocity.add(dir);
         this.position.add(p5.Vector.mult(this.velocity, dt));
 
@@ -221,6 +258,9 @@ class Word {
     // apply transforms within push and pop pairs
     //applyMatrix(-1, 0, 0, 1, w, 0);
     //translate(this.offset.x * downSample, this.offset.y * downSample);
+    let r1 = noise(time + this.offset.x * 5);
+    let r2 = noise(time + this.offset.y * 10);
+    let s = (1.0 + r1 * r2) * this.scale;
     if (this.isFloating) { 
       applyMatrix(-1, 0, 0, 1, w, 0);
       let r1 = noise(time + this.offset.x * 5);
@@ -228,7 +268,7 @@ class Word {
       //translate((this.offset.x + 0.5*this.xLength + r1 * 10) * this.scale, 
       //  (this.offset.y + r2 * 10) * this.scale);
       translate(this.position.x, this.position.y);
-      let s = (1.0 + r1 * r2) * this.scale;
+      
       if (this.isLeaving) {
         scale(Math.max(1./s, 0.5)*s, s);
       }
@@ -238,16 +278,15 @@ class Word {
       
     }
     else {// TODO
-      let chaotic = volatility;
-      //let chaotic = 0;
-      let t = time * chaotic;
-      let r1 = noise(t + this.offset.y);
-      let r2 = noise(t + this.offset.x);
+      //let r1 = noise(t + this.offset.y);
+      //let r2 = noise(t + this.offset.x);
       applyMatrix(-1, 0, 0, 1, w, 0);
       translate(this.position.x, this.position.y);
       //translate(this.position.x + r1 * chaotic, this.position.y + r2 * chaotic);
       //scale((1.0 + Math.min(Math.abs(chaotic*0.2), 1)) * this.scale);
-      scale(this.scale);
+      let ss = Math.min((this.lifetime + varLifetime) / meanLifetime, 1);
+      s = this.scale * (1.0 + r1 * r2 * ss * ss);
+      scale(s);
 
     }
 
