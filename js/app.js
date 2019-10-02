@@ -10,9 +10,10 @@ const meanLifetime = 15;
 const varLifetime = 3;
 const generateInterval = 1.3;
 const letterInterval = 15;
-const lineInterval = 50;
+const lineInterval = 60;
 const smooth = 0.08;
 const noiseScale = 0.05;
+const appearAlphaThres = 150;
 let lookingAt = 0;
 let volatility = 0;
 let smoothVolatility = 0;
@@ -27,34 +28,34 @@ let mouseInput = false;
 
 let font = 'Trebuchet MS';
 
-let poemSentences = [['To gaze', 'at', 'a river', 'made of', 'time', 'and water'],
-        ['And', 'remember', 'Time', 'is', 'another', 'river'],
-        ['To know', 'we', 'stray', 'like', 'a river'],
+let poemSentences = [['To gaze', 'at a river', 'made of', 'time', 'and water'],
+        ['And remember', 'Time', 'is another', 'river'],
+        ['To know', 'we stray', 'like', 'a river'],
         ['and our', 'faces', 'vanish', 'like', 'water'],
         ['To feel', 'that', 'waking', 'is another', 'dream'],
-        ['that', 'dreams of', 'not', 'dreaming', 'and that', 'the', 'death'],
+        ['that', 'dreams of', 'not', 'dreaming', 'and that', 'the death'],
         ['we fear', 'in our', 'bones', 'is', 'the death'],
         ['that', 'every', 'night', 'we call', 'a dream'],
-        ['To', 'see in', 'every', 'day', 'and', 'year', 'a symbol'],
-        ['of all', 'the days', 'of', 'man', 'and', 'his years'],
-        ['and', 'convert', 'the', 'outrage', 'of the', 'years'],
+        ['To', 'see in', 'every day', 'and year', 'a symbol'],
+        ['of all', 'the days', 'of', 'man and', 'his years'],
+        ['and convert', 'the', 'outrage', 'of the', 'years'],
         ['into', 'music', 'a sound', 'and a', 'symbol'],
-        ['To see', 'in', 'death', 'a dream', 'in the', 'sunset'],
+        ['To see', 'in death', 'a dream', 'in the', 'sunset'],
         ['a golden', 'sadness'],
         ['such', 'is', 'poetry'],
         ['humble', 'and', 'immortal', 'poetry'],
-        ['returning', 'like', 'dawn', 'and', 'the sunset'],
-        ['Sometimes', 'at', 'evening', 'there', 'is', 'a face'],
-        ['that', 'sees', 'us', 'from the', 'deeps', 'of', 'a mirror'],
-        ['Art', 'must', 'be', 'that sort', 'of', 'mirror'],
+        ['returning', 'like dawn', 'and', 'the sunset'],
+        ['Sometimes', 'at', 'evening', 'there is', 'a face'],
+        ['that sees', 'us', 'from the', 'deeps', 'of', 'a mirror'],
+        ['Art', 'must be', 'that sort', 'of', 'mirror'],
         ['disclosing', 'to each', 'of us', 'his', 'face'],
-        ['They', 'say', 'Ulysses', 'wearied', 'of', 'wonders'],
-        ['wept', 'with', 'love', 'on', 'seeing', 'Ithaca'],
+        ['They say', 'Ulysses', 'wearied', 'of', 'wonders'],
+        ['wept', 'with love', 'on', 'seeing', 'Ithaca'],
         ['humble', 'and', 'green'],
-        ['Art', 'is that', 'Ithaca', 'a', 'green', 'eternity'],
+        ['Art', 'is that', 'Ithaca', 'a green', 'eternity'],
         ['not', 'wonders'],
         ['Art is', 'endless', 'like a', 'river', 'flowing'],
-        ['passing', 'yet', 'remaining', 'a mirror', 'to', 'the', 'same'],
+        ['passing', 'yet', 'remaining', 'a mirror', 'to', 'the same'],
         ['inconstant', 'Heraclitus', 'who is', 'the same'],
         ['and', 'yet', 'another', 'like', 'the river', 'flowing']
     ]
@@ -132,6 +133,11 @@ class Paragraph {
       this.currentLine++;
       currentOffsetY -= lineInterval;
 
+      for (var i = 0; i < appearingWords.length; i++) {
+        let w = appearingWords[i];
+        w.offset.y -= lineInterval;
+      }
+
       for (var i = 0; i < this.words.length; i++) {
         for (var j = 0; j < this.words[i].length; j++) {
           let w = this.words[i][j];
@@ -194,12 +200,12 @@ class Word {
       else { // appearing
         if (this.scale > 2) {
           this.scale -= dt * 0.5;
-          this.alpha = Math.min(this.alpha + 30 * dt, 200);
+          this.alpha = Math.min(this.alpha + 20 * dt, appearAlphaThres);
         }
   
         if (tracked) {
           // attraction
-          let v = Math.min(0.5 * dist, 150);
+          let v = Math.min(1.0 * dist, 150);
           let dir = p5.Vector.sub(this.target, this.position).normalize();
           dir.mult(v);
           this.velocity.set(dir.x, dir.y);
@@ -213,13 +219,13 @@ class Word {
         this.scale -= dt * 0.8;
       }
       if (this.alpha < 255) {
-        this.alpha += dt * 20;
+        this.alpha += dt * 50;
       }
 
       if (tracked) {
         let dir = p5.Vector.sub(this.target, this.position).normalize();
-        dir.mult(Math.min(15*dist, 500));
-        dir.add(p5.Vector.mult(this.velocity, -3));
+        dir.mult(Math.min(20*dist, 1000));
+        dir.add(p5.Vector.mult(this.velocity, -5));
         dir.mult(dt);
 
         // noise field
@@ -228,7 +234,7 @@ class Word {
         let fx = (noise(this.position.x * noiseScale + dr, this.position.y * noiseScale) - noise0) / dr;
         let fy = (noise(this.position.x * noiseScale, this.position.y * noiseScale + dr) - noise0) / dr;
         let force = createVector(fx, fy);
-        force.mult(500*smoothVolatility * dt);
+        force.mult(300*smoothVolatility * dt);
         dir.add(force);
 
         // repulsive if volatility is high
@@ -258,8 +264,8 @@ class Word {
     // apply transforms within push and pop pairs
     //applyMatrix(-1, 0, 0, 1, w, 0);
     //translate(this.offset.x * downSample, this.offset.y * downSample);
-    let r1 = noise(time + this.offset.x * 5);
-    let r2 = noise(time + this.offset.y * 10);
+    let r1 = noise(time * 0.3 + this.offset.x * 5);
+    let r2 = noise(time * 0.3 + this.offset.y * 10);
     let s = (1.0 + r1 * r2) * this.scale;
     if (this.isFloating) { 
       applyMatrix(-1, 0, 0, 1, w, 0);
