@@ -21,7 +21,8 @@ let ratio;
 
 let words = [];
 //let font = 'Lucida Console';
-let font;
+let font = 'Monospace';
+//let font;
 
 let isDeleted = false;
 let gazeTimer = 0.0;
@@ -105,7 +106,7 @@ class Letter {
 }
 
 function preload() {
-  font = loadFont("https://storage.googleapis.com/jiewen.wang/singularity/RobotoMono-Medium.ttf");
+  //font = loadFont("https://storage.googleapis.com/jiewen.wang/singularity/RobotoMono-Medium.ttf");
 }
 
 
@@ -419,7 +420,7 @@ function draw() {
   //Math.seedrandom(Math.floor(frameCount / 5));
   randomizer = new Math.seedrandom(Math.floor(frameCount / 5));
 
-  fill(80);
+  fill(110);
   push();
   translate(-w*0.1, -h*0.1);
   if (tracked) {
@@ -444,7 +445,7 @@ function draw() {
       }
       else{
         //text(choose(['.', ',', '/', '~', '^', '`', ':', ';', '>']), j*textWidth, i*textHeight);
-        str += choose(['.', ',', '/', '~', '^', '`', ':', ';', '>']);
+        str += choose(['.', ',', '\'', '\"', '^', '`', ':', ';']);
       }
     }
     text(str, 0, i*textHeight);
