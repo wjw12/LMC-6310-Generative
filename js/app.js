@@ -16,10 +16,17 @@ let lookingAt = 0;
 let eyeDist;
 let noseDist1;
 let noseDist2;
+let ratio;
 
-let testWord;
-let font = 'Lucida Console';
-//let font;
+
+let words = [];
+//let font = 'Lucida Console';
+let font;
+
+let isDeleted = false;
+let gazeTimer = 0.0;
+let idleTimer = 0.0;
+let dt = 0.05;
 
 ////////////////////////////////////////
 // background setting
@@ -29,7 +36,7 @@ const textHeight = 17;
 let nRows, nCols;
 let charArray;
 
-let testString = "Stop Me if You've Heard This One: A Robot & a Team of Irish Scientists Walk Into a Senior Living Home - The Robot That Could Change the Senior Care Industry. AI could bridge the widening gap between the number of older Americans in need of care & number of professionals to care for them.";
+let testString = "Stop Me if You've Heard This One: A Robot & a Team of Irish Scientists Walk Into a Senior Living Home - The Robot That Could Change the Senior Care Industry. AI could bridge the widening gap between the number of older Americans in need of care & number of professionals to care for them. Fei-Fei Li, expert in Computer Science: AI is hyped up and very far away from having consciousness Long TL;DR. Still, if you're in a philosophical mood, humor me. Where is our identity and why aren't we looking for it The singularity won't be a problem for long... because it will solve it's own problems";
 let offset = 0;
 let charsPerLine = 20;
 
@@ -49,6 +56,7 @@ class Word {
       this.letters.push(letter);
     }
     this.pos = createVector(0,0);
+    this.hide = false;
     this.scale = 1.0;
     this.color = 255;
 
@@ -56,6 +64,7 @@ class Word {
   }
 
   draw() {
+    if (this.hide) return;
     push();
     // apply transforms within push and pop pairs
     //applyMatrix(-1, 0, 0, 1, w, 0);
@@ -95,13 +104,17 @@ class Letter {
   }
 }
 
+function preload() {
+  font = loadFont("https://storage.googleapis.com/jiewen.wang/singularity/RobotoMono-Medium.ttf");
+}
+
 
 function setup() {
   createCanvas(w, h);
 
   textFont(font);
 
-  frameRate(30);
+  frameRate(60);
   nose =  createVector(0,0);
   eye1 =  createVector(0,0);
   eye2 = createVector(0,0);
@@ -114,11 +127,13 @@ function setup() {
   poseNet.on('pose', degreeTurned);
 
 
-  video.hide();
+ // video.hide();
   
-  testWord = new Word("Don't Look At Me");
+  words.push(new Word("A robot may not injure a human being"));
+  words.push(new Word("A robot must obey orders given it by human beings"));
+  words.push(new Word("A robot must protect its own existence"));
 
-  textSize(18);
+  textSize(12);
   nCols = Math.floor(w * 1.5 / textWidth);
   nRows = Math.floor(h * 1.5 / textHeight);
   
@@ -385,8 +400,8 @@ function setup() {
 }
 
 function choose(choices) {
-  var index = Math.floor(Math.random() * choices.length);
-  //var index = Math.floor(randomizer.quick() * choices.length);
+  //var index = Math.floor(Math.random() * choices.length);
+  var index = Math.floor(randomizer.quick() * choices.length);
   return choices[index];
 }
 
@@ -401,8 +416,8 @@ function draw() {
     error = true;
   }
 
-  Math.seedrandom(Math.floor(frameCount / 5));
-  //randomizer = new Math.seedrandom(Math.floor(frameCount / 5));
+  //Math.seedrandom(Math.floor(frameCount / 5));
+  randomizer = new Math.seedrandom(Math.floor(frameCount / 5));
 
   fill(80);
   push();
@@ -410,6 +425,7 @@ function draw() {
   if (tracked) {
     translate(0.2*(nose.x*downSample - 0.5*w), 0.2*(nose.y*downSample - 0.5*h));
   }
+  textSize(18);
   for (var i = 0; i < nRows; i++) {
     let str = "";
     for (var j = 0; j < nCols; j++) {
@@ -445,6 +461,7 @@ function draw() {
   //////////////////////////////////////////
   // draw forground texts
   //////////////////////////////////////////
+  textSize(12);
   applyMatrix(-1, 0, 0, 1, w, 0);
   fill(255);
 //  image(video, 0, 0, w, h);
@@ -452,9 +469,53 @@ function draw() {
   //drawKeypoints();
   //drawSkeleton();
   if (tracked) {
-    testWord.pos.set(w * 0.5 + 0.1*(nose.x*downSample - 0.5*w) + 100, h * 0.5 + 0.1*(nose.y*downSample - 0.5*h) - 100);          //testWord.pos.set(nose.x, nose.y);
+    let x = w * 0.5 + 0.1*(nose.x*downSample - 0.5*w) + 280;
+    let y = h * 0.5 + 0.1*(nose.y*downSample - 0.5*h) - 100;
+    words[0].pos.set(x, y - 50);          //testWord.pos.set(nose.x, nose.y);
+    words[1].pos.set(x, y);
+    words[2].pos.set(x, y+50);
     //testWord.pos.set(0, h * 0.5 + 0.1*(nose.y*downSample - 0.5*h) - 100);
-    testWord.draw();
+    for (var i = 0; i < 3; i++) {
+      words[i].draw();
+    }
+  }
+
+  
+
+  //////////////////////////////////////////
+  // update timers
+  //////////////////////////////////////////
+
+  let dateObj = new Date();
+  console.log("seconds " + dateObj.getSeconds());
+  let gazeTime = dateObj.getSeconds();
+
+  if (Math.abs(lookingAt) > 70) {
+    gazeTimer += 1;
+  }
+  else {
+    gazeTimer = 0;
+  }
+
+  console.log(gazeTimer);
+  if (gazeTimer > 10) {
+    isDeleted = true;
+    words[0].hide = true;
+    words[1].hide = true;
+    console.log("hide!!!!");
+  }
+
+  if (isDeleted) {
+    idleTimer += 1;
+    if (idleTimer > 100 && gazeTimer > 10) {
+      isDeleted = false;
+      words[0].hide = false;
+      words[1].hide = false;
+      console.log("show!!!!");
+    }
+  }
+  else {
+    idleTimer = 0;
   }
 }
 
@@ -481,10 +542,12 @@ function gotPoses(results) {
 
 function drawFace() {
   push();
-  //applyMatrix(-1, 0, 0, 1, w, 0);
+  applyMatrix(-1, 0, 0, 1, w, 0);
   ellipse(nose.x * downSample, nose.y * downSample, 10, 10);
   ellipse(eye1.x * downSample, eye1.y * downSample, 10, 10);
   ellipse(eye2.x * downSample, eye2.y * downSample, 10, 10);
+  
+  //text(str(lookingAt), 50, 50);
   pop();
 }
 
@@ -523,7 +586,7 @@ function degreeTurned(results){
     let newNose = poses[0].pose.keypoints[0].position;
     let newEye1 = poses[0].pose.keypoints[1].position;
     let newEye2 = poses[0].pose.keypoints[2].position;
-    let s = 0.2
+    let s = 0.2;
     nose.x = lerp(nose.x, newNose.x, s);
     nose.y = lerp(nose.y, newNose.y, s);
     eye1.x = lerp(eye1.x, newEye1.x, s);
@@ -535,16 +598,28 @@ function degreeTurned(results){
     let tempNostDist1 = Math.sqrt(eye1.x*nose.x + eye1.y*nose.y );
     let tempNostDist2 = Math.sqrt(eye2.x*nose.x + eye2.y*nose.y );
 
+    // eyeDist = Math.abs(eye1.x - eye2.x);
+    // noseDist1 = Math.sqrt(Math.pow(eye1.x - nose.x, 2) + Math.pow(eye1.y - nose.y, 2))
+    // noseDist2 = Math.sqrt(Math.pow(eye2.x - nose.x, 2) + Math.pow(eye2.y - nose.y, 2))
+
+    // ratio = noseDist1 / noseDist2;
+    // if (ratio < 1) ratio = 1.0 / ratio;
+
+
 
     lookingAt = 1/Math.abs(tempNostDist1 - tempNostDist2) * 100;
 
-    lookingAt = Math.pow(lookingAt, 2) - 20;
+    let a = 20;
+    lookingAt = Math.pow(lookingAt, 2) - a;
+    if (lookingAt < 2*a) {
+      lookingAt *= pow(lookingAt / (a*2), 1.5);
+    }
     //lookingAt = (1/Math.abs(tempNostDist1 - tempNostDist2))*10;
    // lookingAt = Math.pow(10, tempLookingAt);
 
-    eyeDist = tempEyeDist;
-    noseDist1 = tempNostDist1;
-    noseDist2 = tempNostDist2; 
+    //eyeDist = tempEyeDist;
+    //noseDist1 = tempNostDist1;
+    //noseDist2 = tempNostDist2; 
 
       }
   else {
