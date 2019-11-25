@@ -1,6 +1,8 @@
 let w = window.innerWidth;//640;
 let h = window.innerHeight;//480;
 
+let debug = true;
+
 let downSample = 3.0;
 let video;
 let poseNet;
@@ -423,9 +425,9 @@ function draw() {
   fill(110);
   push();
   translate(-w*0.1, -h*0.1);
-  if (tracked) {
+  //if (tracked) {
     translate(0.2*(nose.x*downSample - 0.5*w), 0.2*(nose.y*downSample - 0.5*h));
-  }
+//}
   textSize(18);
   for (var i = 0; i < nRows; i++) {
     let str = "";
@@ -469,17 +471,16 @@ function draw() {
   drawFace();
   //drawKeypoints();
   //drawSkeleton();
-  if (tracked) {
-    let x = w * 0.5 + 0.1*(nose.x*downSample - 0.5*w) + 280;
+  //if (tracked) {
+    let x = w * 0.5 + 0.1*(nose.x*downSample - 0.5*w) + 280; // screen coordinates
     let y = h * 0.5 + 0.1*(nose.y*downSample - 0.5*h) - 100;
-    words[0].pos.set(x, y - 50);          //testWord.pos.set(nose.x, nose.y);
+    words[0].pos.set(x, y - 50);
     words[1].pos.set(x, y);
     words[2].pos.set(x, y+50);
-    //testWord.pos.set(0, h * 0.5 + 0.1*(nose.y*downSample - 0.5*h) - 100);
     for (var i = 0; i < 3; i++) {
       words[i].draw();
     }
-  }
+  //}
 
   
 
@@ -488,7 +489,7 @@ function draw() {
   //////////////////////////////////////////
 
   let dateObj = new Date();
-  console.log("seconds " + dateObj.getSeconds());
+  //console.log("seconds " + dateObj.getSeconds());
   let gazeTime = dateObj.getSeconds();
 
   if (Math.abs(lookingAt) > 70) {
@@ -498,7 +499,7 @@ function draw() {
     gazeTimer = 0;
   }
 
-  console.log(gazeTimer);
+  //console.log(gazeTimer);
   if (gazeTimer > 10) {
     isDeleted = true;
     words[0].hide = true;
@@ -543,12 +544,19 @@ function gotPoses(results) {
 
 function drawFace() {
   push();
-  applyMatrix(-1, 0, 0, 1, w, 0);
-  ellipse(nose.x * downSample, nose.y * downSample, 10, 10);
-  ellipse(eye1.x * downSample, eye1.y * downSample, 10, 10);
-  ellipse(eye2.x * downSample, eye2.y * downSample, 10, 10);
-  
-  //text(str(lookingAt), 50, 50);
+  //applyMatrix(-1, 0, 0, 1, w, 0);
+  fill(100, 100, 100, 100);
+  let dist = Math.abs((eye1.x - eye2.x) * downSample);
+  ellipse(nose.x * downSample, nose.y * downSample, 3*dist, 5*dist);
+
+  if (debug) {
+    fill(255);
+    ellipse(eye1.x * downSample, eye1.y * downSample, 10, 10);
+    ellipse(eye2.x * downSample, eye2.y * downSample, 10, 10);
+    ellipse(nose.x * downSample, nose.y * downSample, 10, 10);
+    applyMatrix(-1, 0, 0, 1, w, 0);
+    text(str(lookingAt), 50, 50);
+  }
   pop();
 }
 
@@ -584,16 +592,18 @@ function degreeTurned(results){
   poses = results;
 
   if (poses.length > 0 && poses[0].pose.keypoints.length > 2) {
-    let newNose = poses[0].pose.keypoints[0].position;
-    let newEye1 = poses[0].pose.keypoints[1].position;
-    let newEye2 = poses[0].pose.keypoints[2].position;
-    let s = 0.2;
-    nose.x = lerp(nose.x, newNose.x, s);
-    nose.y = lerp(nose.y, newNose.y, s);
-    eye1.x = lerp(eye1.x, newEye1.x, s);
-    eye1.y = lerp(eye1.y, newEye1.y, s);
-    eye2.x = lerp(eye2.x, newEye2.x, s);
-    eye2.y = lerp(eye2.y, newEye2.y, s);
+    if (tracked) {
+      let newNose = poses[0].pose.keypoints[0].position;
+      let newEye1 = poses[0].pose.keypoints[1].position;
+      let newEye2 = poses[0].pose.keypoints[2].position;
+      let s = 0.2;
+      nose.x = lerp(nose.x, newNose.x, s);
+      nose.y = lerp(nose.y, newNose.y, s);
+      eye1.x = lerp(eye1.x, newEye1.x, s);
+      eye1.y = lerp(eye1.y, newEye1.y, s);
+      eye2.x = lerp(eye2.x, newEye2.x, s);
+      eye2.y = lerp(eye2.y, newEye2.y, s);
+    }
 
     let tempEyeDist = Math.abs(eye1.x - eye2.x);
     let tempNostDist1 = Math.sqrt(eye1.x*nose.x + eye1.y*nose.y );
@@ -610,8 +620,9 @@ function degreeTurned(results){
 
     lookingAt = 1/Math.abs(tempNostDist1 - tempNostDist2) * 100;
 
+
     let a = 20;
-    lookingAt = Math.pow(lookingAt, 2) - a;
+    lookingAt = Math.max(Math.pow(lookingAt, 2) - a, 0.1);
     if (lookingAt < 2*a) {
       lookingAt *= pow(lookingAt / (a*2), 1.5);
     }
