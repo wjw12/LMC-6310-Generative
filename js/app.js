@@ -47,6 +47,14 @@ let charsPerLine = 20;
 ////////////////////////////////////////
 ////////////////////////////////////////
 
+// drawing trajectory (test)
+// reference: http://perfectionkills.com/exploring-canvas-drawing-techniques/
+let drawLines = true;
+var ele;
+var ctx;
+var isDrawing, points = [ ];
+var maxPoints = 2000;
+
 let randomizer = new Math.seedrandom(0);
 
 class Word {
@@ -115,6 +123,12 @@ function preload() {
 function setup() {
   createCanvas(w, h);
 
+  // html5 context
+  ele = document.getElementById('defaultCanvas0');
+  ctx = ele.getContext('2d');
+  ctx.lineWidth = 1;
+  ctx.lineJoin = ctx.lineCap = 'round';
+
   textFont(font);
 
   frameRate(60);
@@ -130,7 +144,7 @@ function setup() {
   poseNet.on('pose', degreeTurned);
 
 
- // video.hide();
+  video.hide();
   
   words.push(new Word("A robot may not injure a human being"));
   words.push(new Word("A robot must obey orders given it by human beings"));
@@ -400,6 +414,11 @@ function setup() {
   ]);
 
   randomizer = new Math.seedrandom(0);
+
+  gradient = ctx.createLinearGradient(0, 0, 170, 0);
+    gradient.addColorStop("0", "magenta");
+    gradient.addColorStop("0.5" ,"blue");
+    gradient.addColorStop("1.0", "red");
 }
 
 function choose(choices) {
@@ -549,6 +568,34 @@ function drawFace() {
   let dist = Math.abs((eye1.x - eye2.x) * downSample);
   ellipse(nose.x * downSample, nose.y * downSample, 3*dist, 5*dist);
 
+  if (drawLines) {
+    if (tracked) points.push({ x: nose.x * downSample, y: nose.y * downSample, l:lookingAt });
+    if (points.length > maxPoints) points.shift();
+    let segments = 50;
+    let perSegment = maxPoints / segments;
+      var n = points.length - 1;
+
+      for (var j = 0; j < segments && n >= 0; j++) {
+        ctx.beginPath();
+        ctx.moveTo(points[n].x, points[n].y);
+        for (var i = 1; i < perSegment; i++) {
+          if (n - i < 0) break;
+          ctx.lineTo(points[n-i].x, points[n-i].y);
+          let delta = Math.min(Math.floor(points[n-i].l), 40);
+          var nearPoint = points[n-i-delta-5];
+          if (nearPoint) {
+            ctx.moveTo(nearPoint.x, nearPoint.y);
+            ctx.lineTo(points[n-i].x, points[n-i].y);
+          }
+        }
+        n -= perSegment;
+        ctx.strokeStyle = 'rgba(255,255,255,' + str(1.0 * (segments - j) / segments) + ')';
+        ctx.stroke();
+      } 
+    }
+    
+    
+
   if (debug) {
     fill(255);
     ellipse(eye1.x * downSample, eye1.y * downSample, 10, 10);
@@ -557,6 +604,7 @@ function drawFace() {
     applyMatrix(-1, 0, 0, 1, w, 0);
     text(str(lookingAt), 50, 50);
   }
+
   pop();
 }
 
