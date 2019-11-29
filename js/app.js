@@ -2,7 +2,7 @@
 const w = window.innerWidth;//640;
 const h = window.innerHeight;//480;
 
-const debug = true;
+const debug = false;
 
 const downSample = 3.0;
 let video;
@@ -57,7 +57,9 @@ var isDrawing, points = [ ];
 var points2 = [];
 var dataset = [];
 var data_idx = 0;
-const maxPoints = 1000;
+const maxPoints = 10000;
+const minPoints = 1000;
+var trajectoryPoints = 1000;
 
 var socket = io.connect();
 
@@ -493,7 +495,7 @@ function draw() {
   //drawKeypoints();
   //drawSkeleton();
   //if (tracked) {
-    let x = w * 0.5 + 0.1*(nose.x*downSample - 0.5*w) + 280; // screen coordinates
+    let x = w * 0.5 + 0.1*(nose.x*downSample - 0.5*w) + 300; // screen coordinates
     let y = h * 0.5 + 0.1*(nose.y*downSample - 0.5*h) - 100;
     words[0].pos.set(x, y - 50);
     words[1].pos.set(x, y);
@@ -565,7 +567,7 @@ function gotPoses(results) {
 
 
 socket.on('prediction', function(prediction) {
-  console.log("Receive prediction", prediction);
+  //console.log("Receive prediction", prediction);
   points2.push({
     x: prediction.data[2] * w, 
     y: prediction.data[3] * h, 
@@ -586,8 +588,6 @@ function drawFace() {
   push();
   //applyMatrix(-1, 0, 0, 1, w, 0);
   fill(100, 100, 100, 100);
-  let dist = Math.abs((eye1.x - eye2.x) * downSample);
-  ellipse(nose.x * downSample, nose.y * downSample, 3*dist, 5*dist);
 
   if (drawLines) {
     if (tracked) { 
@@ -609,52 +609,35 @@ function drawFace() {
       //points2.shift();
     }
     let segments = 50;
-    let perSegment = maxPoints / segments;
-    var n = points.length - 1;
 
-    for (var j = 0; j < segments && n >= 0; j++) {
-      ctx.beginPath();
-      ctx.moveTo(points[n].x, points[n].y);
-      for (var i = 1; i < perSegment; i++) {
-        if (n - i < 0) break;
-        ctx.lineTo(points[n-i].x, points[n-i].y);
-        let delta = Math.min(Math.floor(points[n-i].l), 40);
-        var nearPoint = points[n-i-delta-5];
-        if (nearPoint) {
-          ctx.moveTo(nearPoint.x, nearPoint.y);
-          ctx.lineTo(points[n-i].x, points[n-i].y);
-        }
-      }
-      n -= perSegment;
-      ctx.strokeStyle = 'rgba(255,255,255,' + str(1.0 * (segments - j) / segments) + ')';
-      ctx.stroke();
+    if (tracked) {
+      trajectoryPoints = Math.max(minPoints, trajectoryPoints-150);
     }
+    else {
+      trajectoryPoints = Math.min(maxPoints, trajectoryPoints+100);
+    }
+    console.log(trajectoryPoints);
+
+    let alpha = map(trajectoryPoints, minPoints, maxPoints, 0.75, 0.5);
+    drawTrajectory(points, segments, 
+      Math.max(0, points.length - trajectoryPoints), 
+      points.length, alpha);
       
-    n = points2.length - 1;
-    //if(Math.random() < 0.1) console.log(points2);
-    for (var j = 0; j < segments && n >= 0; j++) {
-      ctx.beginPath();
-      ctx.moveTo(points2[n].x, points2[n].y);
-      for (var i = 1; i < perSegment; i++) {
-        if (n - i < 0) break;
-        ctx.lineTo(points2[n-i].x, points2[n-i].y);
-        let delta = Math.min(Math.floor(points2[n-i].l), 40);
-        var nearPoint = points2[n-i-delta-5];
-        if (nearPoint) {
-          ctx.moveTo(nearPoint.x, nearPoint.y);
-          ctx.lineTo(points2[n-i].x, points2[n-i].y);
-        }
-      }
-      n -= perSegment;
-      ctx.strokeStyle = 'rgba(255,255,255,' + str(1.0 * (segments - j) / segments) + ')';
-      ctx.stroke();
-    }
+    drawTrajectory(points2, segments, 
+      Math.max(0, points2.length - trajectoryPoints), 
+      points2.length, alpha);
   }
     
     
+  let fps = frameRate();
+  fill(255);
+  applyMatrix(-1, 0, 0, 1, w, 0);
+  text("FPS " + fps.toFixed(2), 20, 20);
 
   if (debug) {
     fill(255);
+    let dist = Math.abs((eye1.x - eye2.x) * downSample);
+    ellipse(nose.x * downSample, nose.y * downSample, 3*dist, 5*dist);
     ellipse(eye1.x * downSample, eye1.y * downSample, 10, 10);
     ellipse(eye2.x * downSample, eye2.y * downSample, 10, 10);
     ellipse(nose.x * downSample, nose.y * downSample, 10, 10);
@@ -663,6 +646,32 @@ function drawFace() {
   }
 
   pop();
+}
+
+function drawTrajectory(pts, segments, start, end, maxAlpha) {
+  if (end < 1) return;
+  let perSegment = Math.floor((end - start) / segments);
+  var n = end - 1;
+
+  for (var j = 0; j < segments && n >= 0; j++) {
+    ctx.beginPath();
+    ctx.moveTo(pts[n].x, pts[n].y);
+    for (var i = 1; i < perSegment; i++) {
+      if (n - i < start) break;
+      ctx.lineTo(pts[n-i].x, pts[n-i].y);
+
+      // controlled by lookingAt
+      let delta = Math.min(Math.floor(pts[n-i].l), 50);
+      var nearPoint = pts[n-i-delta-7];
+      if (nearPoint) {
+        ctx.moveTo(nearPoint.x, nearPoint.y);
+        ctx.lineTo(pts[n-i].x, pts[n-i].y);
+      }
+    }
+    n -= perSegment;
+    ctx.strokeStyle = 'rgba(255,255,255,' + str(maxAlpha * (segments - j) / segments) + ')';
+    ctx.stroke();
+  }
 }
 
 
