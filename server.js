@@ -56,7 +56,7 @@ var dataset = [];
 var predict_dataset = []
 var rnn_model = null;
 const rnn_timesteps = 100;
-const max_data = 300;
+const max_data = 150;
 var is_learning = false;
 var model_trained = false;
 var child;
@@ -96,7 +96,7 @@ async function send_model(m, train_data) {
     child.send({
         model: jsonStr,
         train_data: train_data,
-        epoches: 5
+        epoches: 1
     });
     is_learning = true;
 }
@@ -107,6 +107,9 @@ async function receive_model(jsonStr) {
     rnn_model = await tf.loadLayersModel(tf.io.fromMemory(json.modelTopology, json.weightSpecs, weightData));
     is_learning = false;
     model_trained = true;
+    for (var i = 0; i < max_data; i++) {
+        predict_dataset[i] = dataset[i];
+    }
 }
 
 // Register a callback function to run when we have an individual connection
@@ -121,11 +124,14 @@ listener.sockets.on('connection',
             while(predict_dataset.length > max_data) predict_dataset.shift();
             prediction = predict(rnn_model, 
                 [predict_dataset.slice(max_data - rnn_timesteps, max_data)]);
+            store_data = []
             for (var i = 0; i < 6; i++) {
                 if (prediction[i] < 0) prediction[i] = 0.0;
                 if (prediction[i] > 1) prediction[i] = 1.0;
+                // add some randomness from input
+                store_data.push(prediction[i]*0.5 + dataset[max_data-1][i]*0.5);
             }
-            predict_dataset.push(prediction);
+            predict_dataset.push(store_data);
             socket.emit('prediction', {'data':prediction});
         }
     },20);
@@ -150,7 +156,7 @@ listener.sockets.on('connection',
                 is_learning = true;
 
                 child.on('message', (msg) => {
-                    console.log("main process receives data: ", msg);
+                    //console.log("main process receives data: ", msg);
                     receive_model(msg.model);
                 })
             }

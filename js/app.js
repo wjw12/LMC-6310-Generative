@@ -629,26 +629,6 @@ function drawFace() {
       ctx.strokeStyle = 'rgba(255,255,255,' + str(1.0 * (segments - j) / segments) + ')';
       ctx.stroke();
     }
-
-      // n = points.length - 1;
-      // for (var j = 0; j < segments && n >= 0; j++) {
-      //   ctx.beginPath();
-      //   ctx.moveTo(points2[n].x, points2[n].y);
-      //   for (var i = 1; i < perSegment; i++) {
-      //     if (n - i < 0) break;
-      //     ctx.lineTo(points2[n-i].x, points2[n-i].y);
-      //     let delta = Math.min(Math.floor(points2[n-i].l), 40);
-      //     var nearPoint = points2[n-i-delta-5];
-      //     if (nearPoint) {
-      //       ctx.moveTo(nearPoint.x, nearPoint.y);
-      //       ctx.lineTo(points2[n-i].x, points2[n-i].y);
-      //     }
-      //   }
-      //   n -= perSegment;
-      //   ctx.strokeStyle = 'rgba(255,255,255,' + str(1.0 * (segments - j) / segments) + ')';
-      //   ctx.stroke();
-      // }
-
       
     n = points2.length - 1;
     //if(Math.random() < 0.1) console.log(points2);

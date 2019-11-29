@@ -43,7 +43,7 @@ async function beginLearning(rnn_model, dataset, epoches) {
     rnn_model.compile({ optimizer: opt_adam, loss: 'meanSquaredError'});
 
     const hist = await rnn_model.fit(xs, ys,
-    { batchSize: 32, epochs: epoches, callbacks: {
+    { batchSize: 100, epochs: epoches, callbacks: {
         onEpochEnd: async (epoch, log) => { callback(epoch, log); }}});
 
     is_learning = false;
@@ -52,6 +52,6 @@ async function beginLearning(rnn_model, dataset, epoches) {
 
 process.on('message', (msg) => {
     if (is_learning) return;
-    console.log("child receives msg ", msg);
+    //console.log("child receives msg ", msg);
     receive_msg(msg);
 });
