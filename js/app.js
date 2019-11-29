@@ -651,7 +651,7 @@ function drawFace() {
 
       
     n = points2.length - 1;
-    if(Math.random() < 0.1) console.log(points2);
+    //if(Math.random() < 0.1) console.log(points2);
     for (var j = 0; j < segments && n >= 0; j++) {
       ctx.beginPath();
       ctx.moveTo(points2[n].x, points2[n].y);

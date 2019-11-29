@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const io = require('socket.io');
 const tf = require('@tensorflow/tfjs');
+const { fork } = require('child_process');
 
 function handleRequest(req, res) {
   // What did we request?
@@ -54,9 +55,11 @@ var listener = io.listen(server);
 var dataset = [];
 var predict_dataset = []
 var rnn_model = null;
-var rnn_timesteps = 100;
-var max_data = 300;
+const rnn_timesteps = 100;
+const max_data = 300;
 var is_learning = false;
+var model_trained = false;
+var child;
 
 
 function buildModel(timesteps, lr) {
@@ -79,38 +82,31 @@ function buildModel(timesteps, lr) {
     return rnn_model;
 }
 
-async function beginLearning(rnn_model, dataset, epoches) {
-
-    console.log("Begin learning " + String(epoches) + " epoches.");
-    is_learning = true;
-    var callback = function(epoch, log) {
-        var log_str = "Epoch: " + String(epoch + 1) + " Loss: " + String(log.loss);
-        console.log(log_str);
-    }
-
-    inputs = [];
-    outputs = [];
-    let timesteps = rnn_timesteps;
-    for (var i = 0; i < dataset.length - timesteps - 1; i++) {
-        inputs.push(dataset.slice(i, i+timesteps));
-        outputs.push(dataset[i+timesteps]);
-    }
-
-    const xs = tf.tensor3d(inputs)
-    const ys = tf.tensor2d(outputs)
-
-    const hist = await rnn_model.fit(xs, ys,
-    { batchSize: 32, epochs: epoches, callbacks: {
-        onEpochEnd: async (epoch, log) => { callback(epoch, log); }}});
-
-    is_learning = false;
-    return { model: rnn_model, stats: hist };
-}
-
 function predict(rnn_model, inputs)
 {
     const outps = rnn_model.predict(tf.tensor3d(inputs));
     return Array.from(outps.dataSync());
+}
+
+async function send_model(m, train_data) {
+    let result = await m.save(tf.io.withSaveHandler(async modelArtifacts => modelArtifacts));
+    result.weightData = Buffer.from(result.weightData).toString("base64");
+    var jsonStr = JSON.stringify(result);
+    
+    child.send({
+        model: jsonStr,
+        train_data: train_data,
+        epoches: 5
+    });
+    is_learning = true;
+}
+
+async function receive_model(jsonStr) {
+    const json = JSON.parse(jsonStr);
+    const weightData = new Uint8Array(Buffer.from(json.weightData, "base64")).buffer;
+    rnn_model = await tf.loadLayersModel(tf.io.fromMemory(json.modelTopology, json.weightSpecs, weightData));
+    is_learning = false;
+    model_trained = true;
 }
 
 // Register a callback function to run when we have an individual connection
@@ -120,7 +116,7 @@ listener.sockets.on('connection',
     console.log("We have a new client: " + socket.id);
 
     setInterval(function(){
-        if (rnn_model) {
+        if (model_trained) {
             // real-time prediction
             while(predict_dataset.length > max_data) predict_dataset.shift();
             prediction = predict(rnn_model, 
@@ -140,7 +136,7 @@ listener.sockets.on('connection',
 
     // receive face_data every frame
     socket.on('face_data', function(data) {
-        console.log("Get data ", data);
+        //console.log("Get data ", data);
         if (dataset.length < max_data) {
             dataset.push(data.data);
             predict_dataset.push(data.data);
@@ -148,12 +144,20 @@ listener.sockets.on('connection',
         else {
             if (!rnn_model) {
                 rnn_model = buildModel(rnn_timesteps, 0.001);
-                beginLearning(rnn_model, dataset, 10);
+                child = fork('train.js');
+
+                send_model(rnn_model, dataset);
+                is_learning = true;
+
+                child.on('message', (msg) => {
+                    console.log("main process receives data: ", msg);
+                    receive_model(msg.model);
+                })
             }
             dataset.shift();
             dataset.push(data.data);
             if (!is_learning) {
-                beginLearning(rnn_model, dataset, 10);
+                send_model(rnn_model, dataset);
             }
         }
 
