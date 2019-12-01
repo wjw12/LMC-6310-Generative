@@ -57,9 +57,9 @@ var isDrawing, points = [ ];
 var points2 = [];
 var dataset = [];
 var data_idx = 0;
-const maxPoints = 10000;
-const minPoints = 1000;
-var trajectoryPoints = 1000;
+const maxPoints = 4000;
+const minPoints = 600;
+var trajectoryPoints = 600;
 
 var socket = io.connect();
 
@@ -611,7 +611,7 @@ function drawFace() {
     let segments = 50;
 
     if (tracked) {
-      trajectoryPoints = Math.max(minPoints, trajectoryPoints-150);
+      trajectoryPoints = Math.max(minPoints, trajectoryPoints-200);
     }
     else {
       trajectoryPoints = Math.min(maxPoints, trajectoryPoints+100);

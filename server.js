@@ -55,8 +55,8 @@ var listener = io.listen(server);
 var dataset = [];
 var predict_dataset = []
 var rnn_model = null;
-const rnn_timesteps = 100;
-const max_data = 150;
+const rnn_timesteps = 70;
+const max_data = 100;
 var is_learning = false;
 var model_trained = false;
 var child;
@@ -71,7 +71,7 @@ function buildModel(timesteps, lr) {
     //lstm_cells.push(tf.layers.lstmCell({units: 32})); 
     //rnn_model.add(tf.layers.rnn({cell: lstm_cells, inputShape: [input_timesteps, input_features], returnSequences: false}));
     rnn_model.add(tf.layers.lstm({
-        units: 32, 
+        units: 12, 
         inputShape: [input_timesteps, input_features],
         returnSequences: false
     }))

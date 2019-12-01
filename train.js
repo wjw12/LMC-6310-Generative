@@ -1,5 +1,5 @@
 const tf = require('@tensorflow/tfjs');
-const rnn_timesteps = 100;
+const rnn_timesteps = 70;
 const lr = 0.001;
 
 var is_learning = false;
