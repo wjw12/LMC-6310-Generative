@@ -40,9 +40,8 @@ const textHeight = 17;
 let nRows, nCols;
 let charArray;
 
-//let testString = "Stop Me if You've Heard This One: A Robot & a Team of Irish Scientists Walk Into a Senior Living Home - The Robot That Could Change the Senior Care Industry. AI could bridge the widening gap between the number of older Americans in need of care & number of professionals to care for them. Fei-Fei Li, expert in Computer Science: AI is hyped up and very far away from having consciousness Long TL;DR. Still, if you're in a philosophical mood, humor me. Where is our identity and why aren't we looking for it The singularity won't be a problem for long... because it will solve it's own problems";
+let testString = "Stop Me if You've Heard This One: A Robot & a Team of Irish Scientists Walk Into a Senior Living Home - The Robot That Could Change the Senior Care Industry. AI could bridge the widening gap between the number of older Americans in need of care & number of professionals to care for them. Fei-Fei Li, expert in Computer Science: AI is hyped up and very far away from having consciousness Long TL;DR. Still, if you're in a philosophical mood, humor me. Where is our identity and why aren't we looking for it The singularity won't be a problem for long... because it will solve it's own problems";
 
-let testString = "aaaaaaaaaaaaaa";
 
 let offset = 0;
 let charsPerLine = 20;
