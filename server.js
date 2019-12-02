@@ -1,4 +1,5 @@
 const http = require('http');
+const request = require('request');
 const path = require('path');
 const fs = require('fs');
 const io = require('socket.io');
@@ -112,6 +113,16 @@ async function receive_model(jsonStr) {
     }
 }
 
+async function download_data(socket) {
+    var content = "";
+    request('https://www.reddit.com/r/singularity/new.json?sort=new', { json: true }, (err, res, body) => {
+        if (err) { return console.log(err); }
+        content = body.data.children;
+        socket.emit('download_data', {'data': content});
+        //console.log(content);
+    });
+}
+
 // Register a callback function to run when we have an individual connection
 // This is run for each individual user that connects
 listener.sockets.on('connection',
@@ -139,6 +150,11 @@ listener.sockets.on('connection',
     socket.on('disconnect', function() {
         console.log("Client has disconnected");
       });
+
+    socket.on('request', function() {
+        console.log("Download some data...");
+        download_data(socket);
+    });
 
     // receive face_data every frame
     socket.on('face_data', function(data) {

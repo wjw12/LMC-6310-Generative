@@ -40,7 +40,10 @@ const textHeight = 17;
 let nRows, nCols;
 let charArray;
 
-let testString = "Stop Me if You've Heard This One: A Robot & a Team of Irish Scientists Walk Into a Senior Living Home - The Robot That Could Change the Senior Care Industry. AI could bridge the widening gap between the number of older Americans in need of care & number of professionals to care for them. Fei-Fei Li, expert in Computer Science: AI is hyped up and very far away from having consciousness Long TL;DR. Still, if you're in a philosophical mood, humor me. Where is our identity and why aren't we looking for it The singularity won't be a problem for long... because it will solve it's own problems";
+//let testString = "Stop Me if You've Heard This One: A Robot & a Team of Irish Scientists Walk Into a Senior Living Home - The Robot That Could Change the Senior Care Industry. AI could bridge the widening gap between the number of older Americans in need of care & number of professionals to care for them. Fei-Fei Li, expert in Computer Science: AI is hyped up and very far away from having consciousness Long TL;DR. Still, if you're in a philosophical mood, humor me. Where is our identity and why aren't we looking for it The singularity won't be a problem for long... because it will solve it's own problems";
+
+let testString = "aaaaaaaaaaaaaa";
+
 let offset = 0;
 let charsPerLine = 20;
 
@@ -60,6 +63,8 @@ var data_idx = 0;
 const maxPoints = 4000;
 const minPoints = 600;
 var trajectoryPoints = 600;
+
+var reqSent = false;
 
 var socket = io.connect();
 
@@ -130,6 +135,7 @@ function preload() {
 
 function setup() {
   createCanvas(w, h);
+  requestData();
 
   // html5 context
   ele = document.getElementById('defaultCanvas0');
@@ -431,6 +437,10 @@ function choose(choices) {
   return choices[index];
 }
 
+function requestData() {
+  socket.emit('request', {});
+}
+
 function draw() {
   background(0);
 
@@ -464,21 +474,23 @@ function draw() {
       let strIdx = Math.floor(i / 8) * charsPerLine + Math.floor(j / 8);
       let charCode = testString.charCodeAt(offset + strIdx);
       if (charArray[8*charCode+rowIdx] & (128 >> colIdx)) {
-      //if (charArray[8*charCode+rowIdx] & (error ? 160 : 128 >> colIdx)) {
-        //text(choose(['B', 'm', '%', '$', '#', 'W', '@', '9', 'e', 'G']), j*textWidth, i*textHeight);
         str += choose(['B', 'm', '%', '$', '#', 'W', '@', '9', 'e', 'G']);
       }
       else{
-        //text(choose(['.', ',', '/', '~', '^', '`', ':', ';', '>']), j*textWidth, i*textHeight);
-        str += choose(['.', ',', '\'', '\"', '^', '`', ':', ';']);
+        str += choose(['.', ',', '\'', '\"', '^', '`', ' ', ' ']);
       }
     }
     text(str, 0, i*textHeight);
   }
   pop();
 
-  if (random() < 0.03) {
+  if (random() < 0.05) {
     offset++;
+  }
+
+  if (!reqSent && offset > testString.length - 100) {
+    reqSent = true;
+    requestData();
   }
   //////////////////////////////////////////
   //////////////////////////////////////////
@@ -584,6 +596,18 @@ socket.on('prediction', function(prediction) {
     points2.shift();
 });
 
+socket.on("download_data", function(data) {
+  var content = data.data;
+  for (var i = 0; i < content.length; i++) {
+    testString += content[i].data.title;
+    testString += content[i].data.selftext;
+    console.log(content[i].data.title);
+  }
+  testString = testString.slice(offset, testString.length);
+  offset = 0;
+  reqSent = false;
+});
+
 function drawFace() {
   push();
   //applyMatrix(-1, 0, 0, 1, w, 0);
@@ -616,7 +640,6 @@ function drawFace() {
     else {
       trajectoryPoints = Math.min(maxPoints, trajectoryPoints+100);
     }
-    console.log(trajectoryPoints);
 
     let alpha = map(trajectoryPoints, minPoints, maxPoints, 0.75, 0.5);
     drawTrajectory(points, segments, 
