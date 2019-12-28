@@ -14,6 +14,10 @@ let nose;
 let eye1;
 let eye2;
 let tracked = false;
+let face_center;
+let face_dx = 0.0;
+let face_dy = 0.0;
+let show_face = 0.0;
 
 let lookingAt = 0;
 let eyeDist;
@@ -35,7 +39,7 @@ let dt = 0.05;
 ////////////////////////////////////////
 // background setting
 ////////////////////////////////////////
-const textWidth = 11;
+const textWidth = 10;
 const textHeight = 17;
 let nRows, nCols;
 let charArray;
@@ -60,7 +64,7 @@ var points2 = [];
 var dataset = [];
 var data_idx = 0;
 const maxPoints = 4000;
-const minPoints = 600;
+const minPoints = 100;
 var trajectoryPoints = 600;
 
 var reqSent = false;
@@ -148,14 +152,13 @@ function setup() {
   nose =  createVector(0,0);
   eye1 =  createVector(0,0);
   eye2 = createVector(0,0);
+  face_center = createVector(0,0);
   video = createCapture(VIDEO);
   video.size(w / downSample, h / downSample);
   
   poseNet = ml5.poseNet(video, modelLoaded);
 
   poseNet.on('pose', gotPoses);
-  poseNet.on('pose', degreeTurned);
-
 
   video.hide();
   
@@ -164,8 +167,8 @@ function setup() {
   words.push(new Word("A robot must protect its own existence"));
 
   textSize(12);
-  nCols = Math.floor(w * 1.5 / textWidth);
-  nRows = Math.floor(h * 1.5 / textHeight);
+  nCols = Math.floor(w / textWidth);
+  nRows = Math.floor(h / textHeight);
   
   charArray = new Uint8Array([
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	// Char 000 (.)
@@ -456,11 +459,34 @@ function draw() {
 
   fill(110);
   push();
-  translate(-w*0.1, -h*0.1);
+  //translate(-w*0.1, -h*0.1);
   //if (tracked) {
-    translate(0.2*(nose.x*downSample - 0.5*w), 0.2*(nose.y*downSample - 0.5*h));
+  //  translate(0.2*(nose.x*downSample - 0.5*w), 0.2*(nose.y*downSample - 0.5*h));
 //}
   textSize(18);
+
+  // get eye focus point
+  let focus_x = w - face_center.x * downSample;
+  let focus_y = face_center.y * downSample - 100.0;
+  let ix = Math.floor(focus_x / textWidth);
+  let iy = Math.floor(focus_y / textHeight);
+  if (tracked && show_face < 1.0) show_face += 0.015;
+  else if (!tracked && show_face > 0.0) show_face -= 0.02;
+
+  let face_char = '_';
+  if (face_dy == 0.0 || abs(face_dx / face_dy) > 3) face_char = '_';
+  else if (abs(face_dx / face_dy) < 0.333) face_char = '|';
+  else {
+    if (face_dx * face_dy > 0) face_char = '/';
+    else face_char = '\\';
+  }
+
+  let eye_dist = Math.abs((eye1.x - eye2.x) * downSample);
+  let dw = eye_dist / textWidth * 7;
+  let dh = eye_dist / textWidth / textWidth * textHeight * 7;
+  let d_ix = Math.floor(dw / textWidth);
+  let d_iy = Math.floor(dh / textHeight);
+
   for (var i = 0; i < nRows; i++) {
     let str = "";
     for (var j = 0; j < nCols; j++) {
@@ -468,15 +494,22 @@ function draw() {
       //  c = choose(['a', '4', 'f', '$', '#', '^', 'U', 'q', ';', 'B']);//String.fromCharCode(c.charCodeAt(0) + 1);
       //}
       //let rowIdx = i % 8;
-      let rowIdx = i % (error? 10: 8);
-      let colIdx = j % 8;
-      let strIdx = Math.floor(i / 8) * charsPerLine + Math.floor(j / 8);
-      let charCode = testString.charCodeAt(offset + strIdx);
-      if (charArray[8*charCode+rowIdx] & (128 >> colIdx)) {
-        str += choose(['B', 'm', '%', '$', '#', 'W', '@', '9', 'e', 'G']);
+      //let range = (j-ix)*(j-ix) / 65.0 + (i-iy)*(i-iy) / 50.0;
+      let range = (j-ix)*(j-ix) / d_ix / d_ix + (i-iy)*(i-iy) / d_iy / d_iy;
+      if (range < 0.5 * show_face || (range < 1.2 * show_face && random() < 0.7) || (range < 1.6 * show_face && random() < 0.25)) {
+        str += face_char;
       }
-      else{
-        str += choose(['.', ',', '\'', '\"', '^', '`', ' ', ' ']);
+      else {
+        let rowIdx = i % (error? 10: 8);
+        let colIdx = j % 8;
+        let strIdx = Math.floor(i / 8) * charsPerLine + Math.floor(j / 8);
+        let charCode = testString.charCodeAt(offset + strIdx);
+        if (charArray[8*charCode+rowIdx] & (128 >> colIdx)) {
+          str += choose(['B', 'm', '%', '$', '#', 'W', '@', '9', 'e', 'G']);
+        }
+        else{
+          str += choose(['.', ',', '\'', '\"', '^', '`', ' ', ' ']);
+        }
       }
     }
     text(str, 0, i*textHeight);
@@ -506,8 +539,8 @@ function draw() {
   //drawKeypoints();
   //drawSkeleton();
   //if (tracked) {
-    let x = w * 0.5 + 0.1*(nose.x*downSample - 0.5*w) + 300; // screen coordinates
-    let y = h * 0.5 + 0.1*(nose.y*downSample - 0.5*h) - 100;
+    let x = w * 0.5 - 0.5*(nose.x*downSample - 0.5*w) + 300; // screen coordinates
+    let y = h * 0.5 - 0.7*(nose.y*downSample - 0.8*h) - 100;
     words[0].pos.set(x, y - 50);
     words[1].pos.set(x, y);
     words[2].pos.set(x, y+50);
@@ -526,7 +559,7 @@ function draw() {
   //console.log("seconds " + dateObj.getSeconds());
   let gazeTime = dateObj.getSeconds();
 
-  if (Math.abs(lookingAt) > 70) {
+  if (Math.abs(lookingAt) > 60) {
     gazeTimer += 1;
   }
   else {
@@ -534,7 +567,7 @@ function draw() {
   }
 
   //console.log(gazeTimer);
-  if (gazeTimer > 10) {
+  if (gazeTimer > 5) {
     isDeleted = true;
     words[0].hide = true;
     words[1].hide = true;
@@ -543,7 +576,7 @@ function draw() {
 
   if (isDeleted) {
     idleTimer += 1;
-    if (idleTimer > 100 && gazeTimer > 10) {
+    if (idleTimer > 50 && gazeTimer > 5) {
       isDeleted = false;
       words[0].hide = false;
       words[1].hide = false;
@@ -562,7 +595,11 @@ function gotPoses(results) {
     let newNose = poses[0].pose.keypoints[0].position;
     let newEye1 = poses[0].pose.keypoints[1].position;
     let newEye2 = poses[0].pose.keypoints[2].position;
-    let s = 0.2
+
+    face_dx = newNose.x - face_center.x;
+    face_dy = newNose.y - face_center.y;
+
+    let s = 0.2;
     nose.x = lerp(nose.x, newNose.x, s);
     nose.y = lerp(nose.y, newNose.y, s);
     eye1.x = lerp(eye1.x, newEye1.x, s);
@@ -570,9 +607,17 @@ function gotPoses(results) {
     eye2.x = lerp(eye2.x, newEye2.x, s);
     eye2.y = lerp(eye2.y, newEye2.y, s);
     //console.log(poses[0].pose.keypoints[0]);
+
+    s = 0.1;
+    face_center.x = lerp(face_center.x, newNose.x, s);
+    face_center.y = lerp(face_center.y, newNose.y, s);
+
+
+    lookingAt = getLookingAt(eye1.x, eye1.y, eye2.x, eye2.y, nose.x, nose.y);
   }
   else {
     tracked = false;
+    lookingAt = 50*random() + 20;
   }
 }
 
@@ -651,15 +696,16 @@ function drawFace() {
   }
     
     
-  let fps = frameRate();
-  fill(255);
-  applyMatrix(-1, 0, 0, 1, w, 0);
-  text("FPS " + fps.toFixed(2), 20, 20);
+  // let fps = frameRate();
+  // fill(255);
+  // applyMatrix(-1, 0, 0, 1, w, 0);
+  // text("FPS " + fps.toFixed(2), 20, 20);
 
   if (debug) {
-    fill(255);
     let dist = Math.abs((eye1.x - eye2.x) * downSample);
+    fill(255,255,255,30);
     ellipse(nose.x * downSample, nose.y * downSample, 3*dist, 5*dist);
+    fill(255);
     ellipse(eye1.x * downSample, eye1.y * downSample, 10, 10);
     ellipse(eye2.x * downSample, eye2.y * downSample, 10, 10);
     ellipse(nose.x * downSample, nose.y * downSample, 10, 10);
@@ -736,47 +782,4 @@ function getLookingAt(eye1x, eye1y, eye2x, eye2y, nosex, nosey) {
     result *= pow(result / (a*2), 1.5);
   }
   return result;
-}
-
-function degreeTurned(results){
-  poses = results;
-
-  if (poses.length > 0 && poses[0].pose.keypoints.length > 2) {
-    if (tracked) {
-      let newNose = poses[0].pose.keypoints[0].position;
-      let newEye1 = poses[0].pose.keypoints[1].position;
-      let newEye2 = poses[0].pose.keypoints[2].position;
-      let s = 0.2;
-      nose.x = lerp(nose.x, newNose.x, s);
-      nose.y = lerp(nose.y, newNose.y, s);
-      eye1.x = lerp(eye1.x, newEye1.x, s);
-      eye1.y = lerp(eye1.y, newEye1.y, s);
-      eye2.x = lerp(eye2.x, newEye2.x, s);
-      eye2.y = lerp(eye2.y, newEye2.y, s);
-    }
-
-    
-
-    // eyeDist = Math.abs(eye1.x - eye2.x);
-    // noseDist1 = Math.sqrt(Math.pow(eye1.x - nose.x, 2) + Math.pow(eye1.y - nose.y, 2))
-    // noseDist2 = Math.sqrt(Math.pow(eye2.x - nose.x, 2) + Math.pow(eye2.y - nose.y, 2))
-
-    // ratio = noseDist1 / noseDist2;
-    // if (ratio < 1) ratio = 1.0 / ratio;
-
-
-
-    lookingAt = getLookingAt(eye1.x, eye1.y, eye2.x, eye2.y, nose.x, nose.y);
-    //lookingAt = (1/Math.abs(tempNostDist1 - tempNostDist2))*10;
-   // lookingAt = Math.pow(10, tempLookingAt);
-
-    //eyeDist = tempEyeDist;
-    //noseDist1 = tempNostDist1;
-    //noseDist2 = tempNostDist2; 
-
-      }
-  else {
-    lookingAt = 0;
-  }
-
 }
