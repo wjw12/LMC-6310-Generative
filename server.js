@@ -5,6 +5,8 @@ const fs = require('fs');
 const io = require('socket.io');
 const tf = require('@tensorflow/tfjs');
 const { fork } = require('child_process');
+require('./train.js');
+
 
 function handleRequest(req, res) {
   // What did we request?

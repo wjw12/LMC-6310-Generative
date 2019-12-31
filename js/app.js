@@ -28,7 +28,8 @@ let ratio;
 
 let words = [];
 //let font = 'Lucida Console';
-let font = 'Monospace';
+//let font = 'Monospace';
+let font = "Roboto Mono";
 //let font;
 
 let isDeleted = false;
@@ -679,10 +680,10 @@ function drawFace() {
     let segments = 50;
 
     if (tracked) {
-      trajectoryPoints = Math.max(minPoints, trajectoryPoints-200);
+      trajectoryPoints = Math.max(minPoints, trajectoryPoints-50);
     }
     else {
-      trajectoryPoints = Math.min(maxPoints, trajectoryPoints+100);
+      trajectoryPoints = Math.min(maxPoints, trajectoryPoints+25);
     }
 
     let alpha = map(trajectoryPoints, minPoints, maxPoints, 0.75, 0.5);
@@ -779,7 +780,7 @@ function getLookingAt(eye1x, eye1y, eye2x, eye2y, nosex, nosey) {
   let a = 20;
   result = Math.max(Math.pow(result, 2) - a, 0.1);
   if (result < 2*a) {
-    result *= pow(result / (a*2), 1.5);
+    result *= pow(result / (a*2), 1.1);
   }
   return result;
 }
